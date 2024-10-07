@@ -1429,6 +1429,8 @@ void Compilation::elaborate() {
     }
 
     if (!hasFlag(CompilationFlags::SuppressUnused)) {
+        TimeTraceScope timeScope("postElabVisitors"sv, ""sv);
+
         // Report on unused definitions.
         for (auto def : unreferencedDefs) {
             // If this is an interface, it may have been referenced in a port.
@@ -2392,8 +2394,8 @@ void Compilation::resolveDefParamsAndBinds() {
 }
 
 template<typename TDefList>
-auto findDefByLib(TDefList& defList,
-                  const SourceLibrary& target) -> std::remove_reference_t<decltype(defList[0])> {
+auto findDefByLib(TDefList& defList, const SourceLibrary& target)
+    -> std::remove_reference_t<decltype(defList[0])> {
     for (auto def : defList) {
         if (def->getSourceLibrary() == &target)
             return def;

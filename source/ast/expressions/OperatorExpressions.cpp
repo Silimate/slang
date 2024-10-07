@@ -847,7 +847,7 @@ Expression& BinaryExpression::fromComponents(Expression& lhs, Expression& rhs, B
                     contextDetermined(context, result->right_, result, compilation.getStringType(),
                                       opRange);
                 }
-                else if (lt->isAggregate() && lt->isEquivalent(*rt) && !lt->isUnpackedUnion()) {
+                else if (lt->isAggregate() && lt->isEquivalent(*rt)) {
                     good = !isWildcard;
                     result->type = singleBitType(compilation, lt, rt);
                 }
@@ -1342,7 +1342,7 @@ Expression& ConditionalExpression::fromSyntax(Compilation& comp,
             else
                 good = false;
         }
-        else if (lt->isEquivalent(*rt) && !lt->isUnpackedUnion()) {
+        else if (lt->isEquivalent(*rt)) {
             result->type = lt;
         }
         else if (left.isImplicitString() && right.isImplicitString()) {
@@ -2085,7 +2085,7 @@ Expression& StreamingConcatenationExpression::fromSyntax(
             // If they are constant, we've already done bounds checking and
             // max size checking on them.
             EvalContext evalCtx(context);
-            auto range = withExpr->evalSelector(evalCtx);
+            auto range = withExpr->evalSelector(evalCtx, /* enforceBounds */ false);
             if (range)
                 constantWithWidth = range->width();
         }
@@ -2167,7 +2167,7 @@ ConstantValue StreamingConcatenationExpression::evalImpl(EvalContext& context) c
             return nullptr;
 
         if (stream.withExpr) {
-            auto range = stream.withExpr->evalSelector(context);
+            auto range = stream.withExpr->evalSelector(context, /* enforceBounds */ false);
             if (!range)
                 return nullptr;
 
@@ -2611,6 +2611,16 @@ ConstantValue Expression::evalBinaryOperator(BinaryOperator op, const ConstantVa
             OP(Inequality, SVInt(false));
             OP(CaseEquality, SVInt(true));
             OP(CaseInequality, SVInt(false));
+            default:
+                SLANG_UNREACHABLE;
+        }
+    }
+    else if (cvl.isUnion() && cvr.isUnion()) {
+        switch (op) {
+            OP(Equality, SVInt(cvl == cvr));
+            OP(Inequality, SVInt(cvl != cvr));
+            OP(CaseEquality, SVInt(cvl == cvr));
+            OP(CaseInequality, SVInt(cvl != cvr));
             default:
                 SLANG_UNREACHABLE;
         }

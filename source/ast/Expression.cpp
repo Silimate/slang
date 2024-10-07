@@ -222,10 +222,7 @@ const Expression& Expression::bindLValue(const ExpressionSyntax& lhs, const Type
     // Create a placeholder expression that will carry the type of the rhs.
     // Nothing will ever actually look at this expression, it's there only
     // to fill the space in the created AssignmentExpression.
-    SourceRange rhsRange{location, location};
-    auto rhsExpr = comp.emplace<EmptyArgumentExpression>(rhs, rhsRange);
-    if (rhsExpr->bad())
-        return badExpr(comp, nullptr);
+    auto rhsExpr = comp.emplace<EmptyArgumentExpression>(rhs, SourceRange{location, location});
 
     auto instance = context.getInstance();
     Expression* lhsExpr;
@@ -486,14 +483,15 @@ LValue Expression::evalLValue(EvalContext& context) const {
     return visit(visitor, context);
 }
 
-std::optional<ConstantRange> Expression::evalSelector(EvalContext& context) const {
+std::optional<ConstantRange> Expression::evalSelector(EvalContext& context,
+                                                      bool enforceBounds) const {
     ConstantValue unused1;
     bool unused2;
     switch (kind) {
         case ExpressionKind::ElementSelect:
             return as<ElementSelectExpression>().evalIndex(context, nullptr, unused1, unused2);
         case ExpressionKind::RangeSelect:
-            return as<RangeSelectExpression>().evalRange(context, nullptr);
+            return as<RangeSelectExpression>().evalRange(context, nullptr, enforceBounds);
         default:
             return {};
     }
