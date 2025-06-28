@@ -229,6 +229,18 @@ public:
     /// source manager.
     std::vector<BufferID> getAllBuffers() const;
 
+    /// Note a buffer's dependency on another buffer (include/consumed macro/consumed symbol)
+    void noteDependency(BufferID dependent, BufferID dependency);
+
+    /// Returns the current dependency table as an immutable hashmap
+    const flat_hash_map<BufferID, std::set<BufferID>>& getDependencyTable() const;
+
+    /// Returns the dependencies of a buffer as an immutable set
+    const std::set<BufferID>& getDependencies(BufferID dependent);
+
+    /// Returns whether one buffer depends on another buffer
+    bool bufferDepends(BufferID dependent, BufferID dependency) const;
+
 private:
     // Stores information specified in a `line directive, which alters the
     // line number and file name that we report in diagnostics.
@@ -320,6 +332,9 @@ private:
 
     // map from buffer to diagnostic directive lists
     flat_hash_map<BufferID, std::vector<DiagnosticDirectiveInfo>> diagDirectives;
+
+    // table representing dependencies between buffers
+    flat_hash_map<BufferID, std::set<BufferID>> dependencyTable;
 
     std::atomic<uint32_t> unnamedBufferCount = 0;
     bool disableProximatePaths = false;

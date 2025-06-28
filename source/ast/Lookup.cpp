@@ -689,6 +689,11 @@ bool checkVisibility(const Symbol& symbol, const Scope& scope,
     return false;
 }
 
+struct Defer {
+    std::function<void()> fn;
+    ~Defer() { fn(); }
+};
+
 bool resolveColonNames(SmallVectorBase<NamePlusLoc>& nameParts, int colonParts,
                        NameComponents& name, bitmask<LookupFlags> flags, LookupResult& result,
                        const ASTContext& context) {
@@ -1714,6 +1719,21 @@ void Lookup::unqualifiedImpl(const Scope& scope, std::string_view name, LookupLo
                              std::optional<SourceRange> sourceRange, bitmask<LookupFlags> flags,
                              SymbolIndex outOfBlockIndex, LookupResult& result,
                              const Scope& originalScope, const SyntaxNode* originalSyntax) {
+    // Deferred: if a valid LookupResult is returned, register the dependency
+    Defer _{[&] {
+        if (result.found == nullptr) {
+            // Not found, nothing to register.
+            return;
+        }
+        if (originalSyntax == nullptr)
+            // Intermediate lookup, leave registration to qualified
+            return;
+
+        auto referencingBuffer = originalSyntax->getFirstToken().location().buffer();
+        auto referencedBuffer = result.found->getSyntax()->getFirstToken().location().buffer();
+        auto sm = scope.getCompilation().getSourceManager();
+        scope.getCompilation().noteDependency(referencingBuffer, referencedBuffer);
+    }};
     auto reportRecursiveError = [&](const Symbol& symbol) {
         if (sourceRange) {
             auto& diag = result.addDiag(scope, diag::RecursiveDefinition, *sourceRange);
@@ -2027,6 +2047,17 @@ void Lookup::unqualifiedImpl(const Scope& scope, std::string_view name, LookupLo
 
 void Lookup::qualified(const ScopedNameSyntax& syntax, const ASTContext& context,
                        bitmask<LookupFlags> flags, LookupResult& result) {
+
+    // Deferred: if a valid LookupResult is returned, register the dependency
+    Defer _{[&](...) {
+        if (result.found == nullptr) {
+            // Not found, nothing to register
+            return;
+        }
+        auto referencingBuffer = syntax.getFirstToken().location().buffer();
+        auto referencedBuffer = result.found->getSyntax()->getFirstToken().location().buffer();
+        context.getCompilation().noteDependency(referencingBuffer, referencedBuffer);
+    }};
     // Split the name into easier to manage chunks. The parser will always produce a
     // left-recursive name tree, so that's all we'll bother to handle.
     int colonParts = 0;

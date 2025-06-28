@@ -648,6 +648,8 @@ void InstanceSymbol::fromSyntax(Compilation& comp, const HierarchyInstantiationS
         }
 
         auto& definition = def->as<DefinitionSymbol>();
+        context.getCompilation().noteDependency(syntax.getFirstToken().location().buffer(),
+                                                def->location.buffer());
         definition.noteInstantiated();
 
         if (inChecker) {

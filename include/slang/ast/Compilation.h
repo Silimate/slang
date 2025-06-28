@@ -8,6 +8,7 @@
 #pragma once
 
 #include <memory>
+#include <set>
 
 #include "slang/ast/ASTDiagMap.h"
 #include "slang/ast/OpaqueInstancePath.h"
@@ -751,6 +752,18 @@ public:
     const syntax::ImplicitTypeSyntax& createEmptyTypeSyntax(SourceLocation loc);
 
     /// @}
+
+    /// Note a buffer's dependency on another buffer (include/consumed macro/consumed symbol)
+    void noteDependency(BufferID dependent, BufferID dependency);
+
+    /// Returns the current dependency table as an immutable hashmap
+    const flat_hash_map<BufferID, std::set<BufferID>>& getDependencyTable() const;
+
+    /// Returns the dependencies of a buffer as an immutable set
+    const std::set<BufferID>& getDependencies(BufferID dependent);
+
+    /// Returns whether one buffer depends on another buffer
+    bool bufferDepends(BufferID dependent, BufferID dependency) const;
 
 private:
     friend class Lookup;

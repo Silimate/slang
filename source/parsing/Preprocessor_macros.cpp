@@ -129,6 +129,9 @@ std::pair<MacroActualArgumentListSyntax*, Trivia> Preprocessor::handleTopLevelMa
     if (!expandedTokens.empty())
         currentMacroToken = expandedTokens.begin();
 
+    sourceManager.noteDependency(directive.location().buffer(),
+                                 macro.syntax->getFirstToken().location().buffer());
+
     return {actualArgs, Trivia()};
 }
 
