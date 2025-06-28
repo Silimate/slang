@@ -689,9 +689,31 @@ bool checkVisibility(const Symbol& symbol, const Scope& scope,
     return false;
 }
 
-struct Defer {
-    std::function<void()> fn;
-    ~Defer() { fn(); }
+/// @brief This struct, upon deconstruction, checks if the LookupResult is
+/// valid, and if so, marks a dependency between two buffers: the one containing
+/// syntax that caused a lookup, and the one that declared the symbol that
+/// was successfully looked up.
+struct DependencySpy {
+    Compilation* compilation;
+    const SyntaxNode* originatingSyntax;
+    LookupResult* result;
+    ~DependencySpy() {
+        if (originatingSyntax == nullptr) {
+            // Intermediate lookup
+            return;
+        }
+        if (result->found == nullptr) {
+            // Nothing found, nothing to register
+            return;
+        }
+        auto sm = compilation->getSourceManager();
+        auto referencing = sm->getFullyOriginalLoc(originatingSyntax->getFirstToken().location());
+        auto referenced = sm->getFullyOriginalLoc(
+            result->found->getSyntax()->getFirstToken().location());
+        if (sm->isFileLoc(referencing) && sm->isFileLoc(referenced)) {
+            compilation->noteDependency(referencing.buffer(), referenced.buffer());
+        }
+    }
 };
 
 bool resolveColonNames(SmallVectorBase<NamePlusLoc>& nameParts, int colonParts,
@@ -1719,21 +1741,7 @@ void Lookup::unqualifiedImpl(const Scope& scope, std::string_view name, LookupLo
                              std::optional<SourceRange> sourceRange, bitmask<LookupFlags> flags,
                              SymbolIndex outOfBlockIndex, LookupResult& result,
                              const Scope& originalScope, const SyntaxNode* originalSyntax) {
-    // Deferred: if a valid LookupResult is returned, register the dependency
-    Defer _{[&] {
-        if (result.found == nullptr) {
-            // Not found, nothing to register.
-            return;
-        }
-        if (originalSyntax == nullptr)
-            // Intermediate lookup, leave registration to qualified
-            return;
-
-        auto referencingBuffer = originalSyntax->getFirstToken().location().buffer();
-        auto referencedBuffer = result.found->getSyntax()->getFirstToken().location().buffer();
-        auto sm = scope.getCompilation().getSourceManager();
-        scope.getCompilation().noteDependency(referencingBuffer, referencedBuffer);
-    }};
+    DependencySpy spy{&scope.getCompilation(), originalSyntax, &result};
     auto reportRecursiveError = [&](const Symbol& symbol) {
         if (sourceRange) {
             auto& diag = result.addDiag(scope, diag::RecursiveDefinition, *sourceRange);
@@ -2047,17 +2055,7 @@ void Lookup::unqualifiedImpl(const Scope& scope, std::string_view name, LookupLo
 
 void Lookup::qualified(const ScopedNameSyntax& syntax, const ASTContext& context,
                        bitmask<LookupFlags> flags, LookupResult& result) {
-
-    // Deferred: if a valid LookupResult is returned, register the dependency
-    Defer _{[&](...) {
-        if (result.found == nullptr) {
-            // Not found, nothing to register
-            return;
-        }
-        auto referencingBuffer = syntax.getFirstToken().location().buffer();
-        auto referencedBuffer = result.found->getSyntax()->getFirstToken().location().buffer();
-        context.getCompilation().noteDependency(referencingBuffer, referencedBuffer);
-    }};
+    DependencySpy spy{&context.getCompilation(), &syntax, &result};
     // Split the name into easier to manage chunks. The parser will always produce a
     // left-recursive name tree, so that's all we'll bother to handle.
     int colonParts = 0;
