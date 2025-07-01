@@ -2550,21 +2550,13 @@ void Compilation::noteDependency(BufferID dependent, BufferID dependency) {
     sourceManager->noteDependency(dependent, dependency);
 }
 
-const flat_hash_map<BufferID, std::set<BufferID>>& Compilation::getDependencyTable() const {
-    return sourceManager->getDependencyTable();
-}
-
-const std::set<BufferID>& Compilation::getDependencies(BufferID dependent) {
-    return sourceManager->getDependencies(dependent);
-}
-
-bool Compilation::bufferDepends(BufferID dependent, BufferID dependency) const {
-    return sourceManager->bufferDepends(dependent, dependency);
+void Compilation::notePeerDependency(BufferID dependent, BufferID peerDependency) {
+    sourceManager->notePeerDependency(dependent, peerDependency);
 }
 
 template<typename TDefList>
-auto findDefByLib(TDefList& defList, const SourceLibrary& target)
-    -> std::remove_reference_t<decltype(defList[0])> {
+auto findDefByLib(TDefList& defList,
+                  const SourceLibrary& target) -> std::remove_reference_t<decltype(defList[0])> {
     for (auto def : defList) {
         if (def->getSourceLibrary() == &target)
             return def;

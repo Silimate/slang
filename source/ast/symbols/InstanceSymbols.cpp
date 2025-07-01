@@ -663,7 +663,7 @@ void InstanceSymbol::fromSyntax(Compilation& comp, const HierarchyInstantiationS
         const SyntaxNode* instanceSyntax = firstFileParent(&syntax);
         const SyntaxNode* defSyntax = firstFileParent(def->getSyntax());
         if (instanceSyntax != nullptr && defSyntax != nullptr)
-            context.getCompilation().noteDependency(
+            context.getCompilation().notePeerDependency(
                 instanceSyntax->getFirstToken().location().buffer(),
                 defSyntax->getFirstToken().location().buffer());
         definition.noteInstantiated();

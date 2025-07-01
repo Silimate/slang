@@ -733,6 +733,12 @@ void SourceManager::noteDependency(BufferID dependent, BufferID dependency) {
     }
 }
 
+void SourceManager::notePeerDependency(BufferID dependent, BufferID peerDependency) {
+    if (dependent != peerDependency) {
+        peerDependencyTable[dependent].insert(peerDependency);
+    }
+}
+
 const flat_hash_map<BufferID, std::set<BufferID>>& SourceManager::getDependencyTable() const {
     return dependencyTable;
 }
@@ -741,9 +747,8 @@ const std::set<BufferID>& SourceManager::getDependencies(BufferID dependent) {
     return dependencyTable[dependent];
 }
 
-bool SourceManager::bufferDepends(BufferID dependent, BufferID dependency) const {
-    auto found = dependencyTable.find(dependent);
-    return found != dependencyTable.end() ? found->second.count(dependency) : false;
+const std::set<BufferID>& SourceManager::getPeerDependencies(BufferID dependent) {
+    return peerDependencyTable[dependent];
 }
 
 } // namespace slang

@@ -753,17 +753,11 @@ public:
 
     /// @}
 
-    /// Note a buffer's dependency on another buffer (include/consumed macro/consumed symbol)
+    /// Passthrough to sourceManager.noteDependency
     void noteDependency(BufferID dependent, BufferID dependency);
 
-    /// Returns the current dependency table as an immutable hashmap
-    const flat_hash_map<BufferID, std::set<BufferID>>& getDependencyTable() const;
-
-    /// Returns the dependencies of a buffer as an immutable set
-    const std::set<BufferID>& getDependencies(BufferID dependent);
-
-    /// Returns whether one buffer depends on another buffer
-    bool bufferDepends(BufferID dependent, BufferID dependency) const;
+    /// Passthrough to sourceManager.notePeerDependency
+    void notePeerDependency(BufferID dependent, BufferID peerDependency);
 
 private:
     friend class Lookup;
