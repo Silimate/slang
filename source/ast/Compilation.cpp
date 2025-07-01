@@ -2554,6 +2554,35 @@ void Compilation::notePeerDependency(BufferID dependent, BufferID peerDependency
     sourceManager->notePeerDependency(dependent, peerDependency);
 }
 
+const SyntaxNode* Compilation::getParentInFile(const SyntaxNode* node) {
+    while (node != nullptr && !sourceManager->isFileLoc(node->getFirstToken().location())) {
+        node = node->parent;
+    }
+    return node;
+};
+
+void Compilation::noteDependency(const syntax::SyntaxNode* dependent,
+                                 const syntax::SyntaxNode* dependency) {
+    // For some reason, in this context specifically, getFullyOriginalLoc
+    // doesn't seem to be cutting it.
+    dependent = getParentInFile(dependent);
+    dependency = getParentInFile(dependency);
+    if (dependent != nullptr && dependency != nullptr)
+        noteDependency(dependent->getFirstToken().location().buffer(),
+                       dependency->getFirstToken().location().buffer());
+}
+
+void Compilation::notePeerDependency(const syntax::SyntaxNode* dependent,
+                                     const syntax::SyntaxNode* dependency) {
+    // For some reason, in this context specifically, getFullyOriginalLoc
+    // doesn't seem to be cutting it.
+    dependent = getParentInFile(dependent);
+    dependency = getParentInFile(dependency);
+    if (dependent != nullptr && dependency != nullptr)
+        notePeerDependency(dependent->getFirstToken().location().buffer(),
+                           dependency->getFirstToken().location().buffer());
+}
+
 template<typename TDefList>
 auto findDefByLib(TDefList& defList,
                   const SourceLibrary& target) -> std::remove_reference_t<decltype(defList[0])> {

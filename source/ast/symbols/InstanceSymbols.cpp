@@ -649,23 +649,7 @@ void InstanceSymbol::fromSyntax(Compilation& comp, const HierarchyInstantiationS
         }
 
         auto& definition = def->as<DefinitionSymbol>();
-        auto sourceManager = comp.getSourceManager();
-        std::function<const SyntaxNode*(const SyntaxNode*)> firstFileParent =
-            [&](const SyntaxNode* node) {
-                if (node == nullptr) {
-                    return node;
-                }
-                if (sourceManager->isFileLoc(node->getFirstToken().location())) {
-                    return node;
-                }
-                return firstFileParent(node->parent);
-            };
-        const SyntaxNode* instanceSyntax = firstFileParent(&syntax);
-        const SyntaxNode* defSyntax = firstFileParent(def->getSyntax());
-        if (instanceSyntax != nullptr && defSyntax != nullptr)
-            context.getCompilation().notePeerDependency(
-                instanceSyntax->getFirstToken().location().buffer(),
-                defSyntax->getFirstToken().location().buffer());
+        context.getCompilation().notePeerDependency(&syntax, def->getSyntax());
         definition.noteInstantiated();
 
         if (inChecker) {

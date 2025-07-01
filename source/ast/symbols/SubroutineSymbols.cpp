@@ -1176,20 +1176,7 @@ const SubroutineSymbol* MethodPrototypeSymbol::getSubroutine() const {
         return nullptr;
     }
 
-    std::function<const SyntaxNode*(const SyntaxNode*)> firstFileParent =
-        [&](const SyntaxNode* node) {
-            if (node == nullptr) {
-                return node;
-            }
-            if (comp.getSourceManager()->isFileLoc(node->getFirstToken().location())) {
-                return node;
-            }
-            return firstFileParent(node->parent);
-        };
-    const SyntaxNode* declSyntaxResolved = firstFileParent(parentSym.getSyntax());
-    const SyntaxNode* defSyntaxResolved = firstFileParent(syntax);
-    comp.notePeerDependency(declSyntaxResolved->getFirstToken().location().buffer(),
-                            defSyntaxResolved->getFirstToken().location().buffer());
+    comp.notePeerDependency(parentSym.getSyntax(), syntax);
 
     // The method definition must be located after the class definition.
     if (index <= parentSym.getIndex()) {
