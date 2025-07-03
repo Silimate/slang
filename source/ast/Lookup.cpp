@@ -689,7 +689,7 @@ bool checkVisibility(const Symbol& symbol, const Scope& scope,
     return false;
 }
 
-/// @brief This struct, upon deconstruction, checks if the LookupResult is
+/// @brief This struct, upon destruction, checks if the LookupResult is
 /// valid, and if so, marks a dependency between two buffers: the one containing
 /// syntax that caused a lookup, and the one that declared the symbol that
 /// was successfully looked up.
