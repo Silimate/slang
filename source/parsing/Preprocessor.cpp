@@ -560,6 +560,8 @@ Trivia Preprocessor::handleIncludeDirective(Token directive) {
             includeDepth++;
             pushSource(*buffer);
 
+            sourceManager.noteDependency(syntax->getFirstToken().location().buffer(), buffer->id);
+
             includeDirectives.push_back(IncludeMetadata{
                 .syntax = syntax,
                 .path = path,

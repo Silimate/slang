@@ -8,6 +8,7 @@
 #pragma once
 
 #include <memory>
+#include <set>
 
 #include "slang/ast/ASTDiagMap.h"
 #include "slang/ast/OpaqueInstancePath.h"
@@ -752,6 +753,21 @@ public:
 
     /// @}
 
+    /// Passthrough to sourceManager.noteDependency
+    void noteDependency(BufferID dependent, BufferID dependency);
+
+    /// Passthrough to sourceManager.notePeerDependency
+    void notePeerDependency(BufferID dependent, BufferID peerDependency);
+
+    /// Resolves two pieces of syntax to files then notes their dependency
+    /// status
+    void noteDependency(const syntax::SyntaxNode* dependent, const syntax::SyntaxNode* dependency);
+
+    /// Resolves two pieces of syntax to files then notes their peer dependency
+    /// status
+    void notePeerDependency(const syntax::SyntaxNode* dependent,
+                            const syntax::SyntaxNode* dependency);
+
 private:
     friend class Lookup;
     friend class Scope;
@@ -809,6 +825,7 @@ private:
         const ConfigRule* configRule, const std::vector<Symbol*>& defList) const;
     Diagnostic* errorMissingDef(std::string_view name, const Scope& scope, SourceRange sourceRange,
                                 DiagCode code) const;
+    const syntax::SyntaxNode* getParentInFile(const syntax::SyntaxNode* node);
 
     // Stored options object.
     CompilationOptions options;

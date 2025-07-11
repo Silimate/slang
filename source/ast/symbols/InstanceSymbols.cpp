@@ -29,6 +29,7 @@
 #include "slang/diagnostics/ExpressionsDiags.h"
 #include "slang/diagnostics/ParserDiags.h"
 #include "slang/syntax/AllSyntax.h"
+#include "slang/text/SourceManager.h"
 #include "slang/util/TimeTrace.h"
 #include "slang/util/TypeTraits.h"
 
@@ -648,6 +649,7 @@ void InstanceSymbol::fromSyntax(Compilation& comp, const HierarchyInstantiationS
         }
 
         auto& definition = def->as<DefinitionSymbol>();
+        context.getCompilation().notePeerDependency(&syntax, def->getSyntax());
         definition.noteInstantiated();
 
         if (inChecker) {

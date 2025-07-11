@@ -22,6 +22,7 @@
 #include "slang/diagnostics/LookupDiags.h"
 #include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxFacts.h"
+#include "slang/text/SourceManager.h"
 
 namespace slang::ast {
 
@@ -1174,6 +1175,8 @@ const SubroutineSymbol* MethodPrototypeSymbol::getSubroutine() const {
         outerScope.addDiag(diag::NoMemberImplFound, location) << name;
         return nullptr;
     }
+
+    comp.notePeerDependency(parentSym.getSyntax(), syntax);
 
     // The method definition must be located after the class definition.
     if (index <= parentSym.getIndex()) {

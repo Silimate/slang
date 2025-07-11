@@ -229,6 +229,21 @@ public:
     /// source manager.
     std::vector<BufferID> getAllBuffers() const;
 
+    /// Note a buffer's dependency on another buffer (include/consumed macro/consumed symbol)
+    void noteDependency(BufferID dependent, BufferID dependency);
+
+    /// Note a buffer's peer dependency on another buffer (module/extern subroutine)
+    void notePeerDependency(BufferID dependent, BufferID peerDependency);
+
+    /// Returns the current dependency table as an immutable hashmap
+    const flat_hash_map<BufferID, std::set<BufferID>>& getDependencyTable() const;
+
+    /// Returns the dependencies of a buffer as an immutable set
+    const std::set<BufferID>& getDependencies(BufferID dependent);
+
+    /// Returns the peer dependencies of a buffer as an immutable set
+    const std::set<BufferID>& getPeerDependencies(BufferID dependent);
+
 private:
     // Stores information specified in a `line directive, which alters the
     // line number and file name that we report in diagnostics.
@@ -320,6 +335,14 @@ private:
 
     // map from buffer to diagnostic directive lists
     flat_hash_map<BufferID, std::vector<DiagnosticDirectiveInfo>> diagDirectives;
+
+    // table representing direct dependencies between buffers: buffer A must be
+    // loaded at least before buffer B
+    flat_hash_map<BufferID, std::set<BufferID>> dependencyTable;
+
+    // table representing indirect dependencies between buffers: the order
+    // doesn't matter, but the two buffers should eventually be loaded together
+    flat_hash_map<BufferID, std::set<BufferID>> peerDependencyTable;
 
     std::atomic<uint32_t> unnamedBufferCount = 0;
     bool disableProximatePaths = false;

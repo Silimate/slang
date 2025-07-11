@@ -727,4 +727,28 @@ const SourceManager::LineDirectiveInfo* SourceManager::FileInfo::getPreviousLine
     }
 }
 
+void SourceManager::noteDependency(BufferID dependent, BufferID dependency) {
+    if (dependent != dependency) {
+        dependencyTable[dependent].insert(dependency);
+    }
+}
+
+void SourceManager::notePeerDependency(BufferID dependent, BufferID peerDependency) {
+    if (dependent != peerDependency) {
+        peerDependencyTable[dependent].insert(peerDependency);
+    }
+}
+
+const flat_hash_map<BufferID, std::set<BufferID>>& SourceManager::getDependencyTable() const {
+    return dependencyTable;
+}
+
+const std::set<BufferID>& SourceManager::getDependencies(BufferID dependent) {
+    return dependencyTable[dependent];
+}
+
+const std::set<BufferID>& SourceManager::getPeerDependencies(BufferID dependent) {
+    return peerDependencyTable[dependent];
+}
+
 } // namespace slang
