@@ -235,14 +235,11 @@ public:
     /// Note a buffer's peer dependency on another buffer (module/extern subroutine)
     void notePeerDependency(BufferID dependent, BufferID peerDependency);
 
-    /// Returns the current dependency table as an immutable hashmap
-    const flat_hash_map<BufferID, std::set<BufferID>>& getDependencyTable() const;
-
     /// Returns the dependencies of a buffer as an immutable set
-    const std::set<BufferID>& getDependencies(BufferID dependent);
+    const std::set<BufferID> getDependencies(BufferID dependent) const;
 
     /// Returns the peer dependencies of a buffer as an immutable set
-    const std::set<BufferID>& getPeerDependencies(BufferID dependent);
+    const std::set<BufferID> getPeerDependencies(BufferID dependent) const;
 
 private:
     // Stores information specified in a `line directive, which alters the
