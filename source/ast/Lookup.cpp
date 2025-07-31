@@ -706,13 +706,7 @@ struct DependencySpy {
             // Nothing found, nothing to register
             return;
         }
-        auto sm = compilation->getSourceManager();
-        auto referencing = sm->getFullyOriginalLoc(originatingSyntax->getFirstToken().location());
-        auto referenced = sm->getFullyOriginalLoc(
-            result->found->getSyntax()->getFirstToken().location());
-        if (sm->isFileLoc(referencing) && sm->isFileLoc(referenced)) {
-            compilation->noteDependency(referencing.buffer(), referenced.buffer());
-        }
+        compilation->noteDependency(originatingSyntax, result->found->getSyntax());
     }
 };
 

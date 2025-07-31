@@ -752,26 +752,37 @@ const SourceManager::LineDirectiveInfo* SourceManager::FileInfo::getPreviousLine
 
 void SourceManager::noteDependency(BufferID dependent, BufferID dependency) {
     if (dependent != dependency) {
+        std::unique_lock<std::shared_mutex> lock(mutex);
         dependencyTable[dependent].insert(dependency);
     }
 }
 
 void SourceManager::notePeerDependency(BufferID dependent, BufferID peerDependency) {
     if (dependent != peerDependency) {
+        std::unique_lock<std::shared_mutex> lock(mutex);
         peerDependencyTable[dependent].insert(peerDependency);
     }
 }
 
-const flat_hash_map<BufferID, std::set<BufferID>>& SourceManager::getDependencyTable() const {
-    return dependencyTable;
+const std::set<BufferID> SourceManager::getDependencies(BufferID dependent) const {
+    std::shared_lock<std::shared_mutex> lock(mutex);
+    auto it = dependencyTable.find(dependent);
+    if (it != dependencyTable.end()) {
+        return it->second;
+    } else {
+        return {};
+    }
+
 }
 
-const std::set<BufferID>& SourceManager::getDependencies(BufferID dependent) {
-    return dependencyTable[dependent];
-}
-
-const std::set<BufferID>& SourceManager::getPeerDependencies(BufferID dependent) {
-    return peerDependencyTable[dependent];
+const std::set<BufferID> SourceManager::getPeerDependencies(BufferID dependent) const {
+    std::shared_lock<std::shared_mutex> lock(mutex);
+    auto it = peerDependencyTable.find(dependent);
+    if (it != peerDependencyTable.end()) {
+        return it->second;
+    } else {
+        return {};
+    }
 }
 
 } // namespace slang
