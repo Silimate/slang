@@ -296,19 +296,35 @@ const Type& EnumType::fromSyntax(Compilation& comp, const EnumTypeSyntax& syntax
         bitWidth = cb->getBitWidth();
     }
     else {
-        base = &comp.getType(*syntax.baseType, context);
+        auto& bts = *syntax.baseType;
+        base = &comp.getType(bts, context);
         cb = &base->getCanonicalType();
         if (!cb->isError()) {
             // Error if the named type is invalid for an enum base type. Other invalid types
             // will have been diagnosed already by the parser.
-            if (!cb->isSimpleBitVector() && syntax.baseType->kind == SyntaxKind::NamedType) {
-                context.addDiag(diag::InvalidEnumBase, syntax.baseType->getFirstToken().location())
-                    << *base;
+            if (!cb->isSimpleBitVector() &&
+                (bts.kind == SyntaxKind::NamedType || IntegerTypeSyntax::isKind(bts.kind))) {
+                context.addDiag(diag::InvalidEnumBase, bts.sourceRange()) << *base;
                 cb = &comp.getErrorType();
             }
             else {
                 bitWidth = cb->getBitWidth();
                 SLANG_ASSERT(bitWidth);
+            }
+        }
+        else {
+            // There are many reasons that the base type could be an error, most of which
+            // will have already been diagnosed. We only need to check for the case where
+            // the base type is referring to this same enum definition via a forward decl,
+            // which is a circular reference.
+            if (base->kind == SymbolKind::TypeAlias && base->getSyntax() == syntax.parent) {
+                auto& diag = context.addDiag(diag::EnumCircularBaseType,
+                                             syntax.baseType->sourceRange());
+                diag << base->name;
+
+                auto& alias = base->as<TypeAliasType>();
+                if (auto fwd = alias.getFirstForwardDecl())
+                    diag.addNote(diag::NoteReferencedHere, fwd->location);
             }
         }
     }
