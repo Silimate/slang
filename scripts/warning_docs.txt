@@ -548,6 +548,21 @@ module m;
 endmodule
 ```
 
+-Wcase-none
+A case statement is statically known to not select any branch, because none of the
+items match the known constant expression and there is no default label.
+```
+module m;
+    always_comb begin
+        case (1)
+            2: begin end
+            3: begin end
+            4: begin end
+        endcase
+    end
+endmodule
+```
+
 @category Constant Evaluation
 
 -Wreal-underflow
@@ -1778,6 +1793,25 @@ $warning("Hello World!");
 No valid top-level modules exist in the design. No top has been instantiated.
 ```
 module m #(parameter int i);
+endmodule
+```
+
+-Wunnamed-generate
+A generate block has no user-provided name. This is perfectly valid in SystemVerilog
+but many coding standards dictate that generate blocks alwayscbe given a name so this
+warning can be used to enforce that.
+```
+module a;
+    parameter L = 0;
+    if (L) begin
+    end else begin
+    end
+endmodule
+
+module top;
+    for (genvar i = 0; i < 8; i++) begin
+        a a_inst();
+    end
 endmodule
 ```
 

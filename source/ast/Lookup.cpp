@@ -22,6 +22,7 @@
 #include "slang/ast/symbols/VariableSymbols.h"
 #include "slang/ast/types/AllTypes.h"
 #include "slang/diagnostics/ExpressionsDiags.h"
+#include "slang/diagnostics/GeneralDiags.h"
 #include "slang/diagnostics/LookupDiags.h"
 #include "slang/diagnostics/NumericDiags.h"
 #include "slang/diagnostics/ParserDiags.h"
@@ -246,6 +247,22 @@ const Symbol* getContainingPackage(const Symbol& symbol) {
     }
 }
 
+bool isBadGenblkAccess(const Symbol& symbol, const Scope& scope, bitmask<LookupFlags> flags) {
+    auto check = [&](auto& block) {
+        return block.isUnnamed && !flags.has(LookupFlags::AllowUnnamedGenerate) &&
+               !scope.getCompilation().hasFlag(CompilationFlags::AllowUnnamedGenerate);
+    };
+
+    switch (symbol.kind) {
+        case SymbolKind::GenerateBlock:
+            return check(symbol.as<GenerateBlockSymbol>());
+        case SymbolKind::GenerateBlockArray:
+            return check(symbol.as<GenerateBlockArraySymbol>());
+        default:
+            return false;
+    }
+}
+
 // Returns true if the lookup was ok, or if it failed in a way that allows us to continue
 // looking up in other ways. Returns false if the entire lookup has failed and should be
 // aborted.
@@ -268,11 +285,24 @@ bool lookupDownward(std::span<const NamePlusLoc> nameParts, NameComponents name,
         return true;
     };
 
+    auto checkGenblkAccess = [&] {
+        if (symbol && isBadGenblkAccess(*symbol, *context.scope, flags)) {
+            auto& diag = result.addDiag(*context.scope, diag::UnnamedGenerateReference, name.range);
+            diag << name.text;
+            diag.addNote(diag::NoteDeclarationHere, symbol->location);
+            return false;
+        }
+        return true;
+    };
+
     // Loop through each dotted name component and try to find it in the preceeding scope.
     bool isVirtualIface = false;
     for (auto it = nameParts.rbegin(); it != nameParts.rend(); it++) {
         if (!checkClassParams(name))
             return false;
+
+        if (!checkGenblkAccess())
+            return true;
 
         auto isValueLike = [&](const Symbol*& symbol) {
             switch (symbol->kind) {
@@ -512,6 +542,9 @@ bool lookupDownward(std::span<const NamePlusLoc> nameParts, NameComponents name,
 
     if (!checkClassParams(name))
         return false;
+
+    if (!checkGenblkAccess())
+        return true;
 
     if (result.flags.has(LookupResultFlags::IsHierarchical | LookupResultFlags::IfacePort) &&
         symbol) {
@@ -1753,6 +1786,7 @@ void Lookup::unqualifiedImpl(const Scope& scope, std::string_view name, LookupLo
         // declared before use). Callables and block names can be referenced anywhere in the
         // scope, so the location doesn't matter for them.
         symbol = it->second;
+
         bool locationGood = LookupLocation::before(*symbol) < location;
         if (!locationGood) {
             // A type alias can have forward definitions, so check those locations as well.
@@ -1869,6 +1903,7 @@ void Lookup::unqualifiedImpl(const Scope& scope, std::string_view name, LookupLo
                 }
             }
 
+            bool done = true;
             switch (symbol->kind) {
                 case SymbolKind::ExplicitImport:
                     result.found = symbol->as<ExplicitImportSymbol>().importedSymbol();
@@ -1886,6 +1921,17 @@ void Lookup::unqualifiedImpl(const Scope& scope, std::string_view name, LookupLo
                 case SymbolKind::ModportClocking:
                     result.found = symbol->as<ModportClockingSymbol>().target;
                     break;
+                case SymbolKind::GenerateBlock:
+                case SymbolKind::GenerateBlockArray:
+                    if (isBadGenblkAccess(*symbol, scope, flags)) {
+                        // We can't actually access these blocks by name, so pretend
+                        // we didn't find them.
+                        done = false;
+                    }
+                    else {
+                        result.found = symbol;
+                    }
+                    break;
                 default:
                     result.found = symbol;
                     break;
@@ -1896,7 +1942,6 @@ void Lookup::unqualifiedImpl(const Scope& scope, std::string_view name, LookupLo
             // evaluated. This can only happen with a mutually recursive definition of something
             // like a parameter and a function, so detect and report the error here to avoid a
             // stack overflow.
-            bool done = true;
             if (result.found) {
                 auto declaredType = result.found->getDeclaredType();
                 if (declaredType && declaredType->isEvaluating()) {

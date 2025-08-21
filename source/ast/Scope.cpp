@@ -26,6 +26,7 @@
 #include "slang/diagnostics/LookupDiags.h"
 #include "slang/diagnostics/ParserDiags.h"
 #include "slang/syntax/AllSyntax.h"
+#include "slang/util/SmallVector.h"
 #include "slang/util/TimeTrace.h"
 
 namespace {
@@ -899,7 +900,8 @@ void Scope::elaborate() const {
                                           nonAnsiPortDecls);
                     break;
                 case SyntaxKind::PortDeclaration:
-                    nonAnsiPortDecls.push_back({&node, symbol});
+                    if (hasNonAnsiPorts)
+                        nonAnsiPortDecls.push_back({&node, symbol});
                     break;
                 default:
                     break;
@@ -926,6 +928,7 @@ void Scope::elaborate() const {
 
     // Go through deferred instances and elaborate them now.
     SmallVector<const ModuleDeclarationSyntax*> nestedDefs;
+    SmallVector<Symbol*> unnamedGenblks;
     const Symbol* prev = nullptr;
     uint32_t constructIndex = 1;
     bool usedPorts = false;
@@ -995,6 +998,10 @@ void Scope::elaborate() const {
                                                 blocks);
                 constructIndex++;
                 insertMembers(blocks, symbol);
+                for (auto block : blocks) {
+                    if (block->isUnnamed && !block->isUninstantiated)
+                        unnamedGenblks.push_back(block);
+                }
                 break;
             }
             case SyntaxKind::CaseGenerate: {
@@ -1004,23 +1011,34 @@ void Scope::elaborate() const {
                                                 blocks);
                 constructIndex++;
                 insertMembers(blocks, symbol);
+                for (auto block : blocks) {
+                    if (block->isUnnamed && !block->isUninstantiated)
+                        unnamedGenblks.push_back(block);
+                }
                 break;
             }
-            case SyntaxKind::LoopGenerate:
-                insertMember(&GenerateBlockArraySymbol::fromSyntax(
-                                 compilation, member.node.as<LoopGenerateSyntax>(),
-                                 symbol->getIndex(), context, constructIndex),
-                             symbol, true, true);
+            case SyntaxKind::LoopGenerate: {
+                auto array = &GenerateBlockArraySymbol::fromSyntax(
+                    compilation, member.node.as<LoopGenerateSyntax>(), symbol->getIndex(), context,
+                    constructIndex);
+                insertMember(array, symbol, true, true);
+                if (array->isUnnamed)
+                    unnamedGenblks.push_back(array);
                 constructIndex++;
                 break;
-            case SyntaxKind::GenerateBlock:
+            }
+            case SyntaxKind::GenerateBlock: {
                 // This case is invalid according to the spec but the parser only issues a
                 // warning since some existing code does this anyway.
-                insertMember(&GenerateBlockSymbol::fromSyntax(
-                                 *this, member.node.as<GenerateBlockSyntax>(), constructIndex),
-                             symbol, true, true);
+                auto block = &GenerateBlockSymbol::fromSyntax(*this,
+                                                              member.node.as<GenerateBlockSyntax>(),
+                                                              constructIndex);
+                insertMember(block, symbol, true, true);
+                if (block->isUnnamed)
+                    unnamedGenblks.push_back(block);
                 constructIndex++;
                 break;
+            }
             case SyntaxKind::AnsiPortList:
             case SyntaxKind::NonAnsiPortList: {
                 SmallVector<const Symbol*> ports;
@@ -1173,6 +1191,22 @@ void Scope::elaborate() const {
             if (!lastMember)
                 lastMember = prev;
         }
+    }
+
+    for (auto symbol : unnamedGenblks) {
+        auto updateName = [&](Symbol* symbol, const std::string& externalName) {
+            auto span = compilation.copyFrom(
+                std::span<const char>(externalName.data(), externalName.size()));
+            symbol->name = std::string_view(span.data(), span.size());
+
+            auto [it, inserted] = nameMap->emplace(symbol->name, symbol);
+            SLANG_ASSERT(inserted);
+        };
+
+        if (auto block = symbol->as_if<GenerateBlockSymbol>())
+            updateName(block, block->getExternalName());
+        else if (auto array = symbol->as_if<GenerateBlockArraySymbol>())
+            updateName(array, array->getExternalName());
     }
 
     // If there are nested definitions, go back through and find ones that
