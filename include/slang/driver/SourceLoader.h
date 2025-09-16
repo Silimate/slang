@@ -152,6 +152,18 @@ public:
     /// it does not exist. Returns nullptr if @a name is empty.
     SourceLibrary* getOrAddLibrary(std::string_view name);
 
+    /// Get Library Files
+    std::vector<std::pair<const SourceLibrary *, const std::filesystem::path>> getLibraryFiles() const;
+
+    /// Get Library Map Files
+    std::span<const std::filesystem::path> getLibraryMapFiles() const { return libraryMapFiles; }
+
+    /// Get Search Directories
+    std::span<const std::filesystem::path> getSearchDirectories() const { return searchDirectories; }
+
+    /// Get Search Extensions
+    std::span<const std::filesystem::path> getSearchExtensions() const { return searchExtensions; }
+
 private:
     // One entry per unit of files + options to compile them.
     // Only used for addSeparateUnit.
@@ -236,6 +248,7 @@ private:
     std::vector<std::filesystem::path> searchExtensions;
     flat_hash_set<std::string_view> uniqueExtensions;
     std::vector<std::string> errors;
+    std::vector<std::filesystem::path> libraryMapFiles;
     SyntaxTreeList libraryMapTrees;
 
     static constexpr int MinFilesForThreading = 4;
