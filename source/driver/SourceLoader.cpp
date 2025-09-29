@@ -134,6 +134,8 @@ void SourceLoader::addLibraryMapsInternal(std::string_view pattern, const fs::pa
             continue;
         }
 
+        libraryMapFiles.push_back(path);
+
         auto tree = SyntaxTree::fromLibraryMapBuffer(*buffer, sourceManager, optionBag);
         libraryMapTrees.push_back(tree);
 
@@ -542,6 +544,18 @@ SourceLoader::LoadResult SourceLoader::loadAndParse(const FileEntry& entry, cons
 
 void SourceLoader::addError(const std::filesystem::path& path, std::error_code ec) {
     errors.emplace_back(fmt::format("'{}': {}", getU8Str(path), ec.message()));
+}
+
+std::vector<std::pair<const SourceLibrary*, const std::filesystem::path>> SourceLoader::
+    getLibraryFiles() const {
+    std::vector<std::pair<const SourceLibrary*, const std::filesystem::path>> result;
+    for (auto& entry : fileEntries) {
+        if (!entry.isLibraryFile) {
+            continue;
+        }
+        result.push_back({entry.library, entry.path});
+    }
+    return result;
 }
 
 } // namespace slang::driver

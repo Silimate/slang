@@ -507,6 +507,7 @@ bool Driver::processCommandFiles(std::string_view pattern, bool makeRelative, bo
             fs::current_path(currPath, ec);
 
         activeCommandFiles.erase(path);
+        processedCommandFiles.insert(path);
 
         if (!result) {
             anyFailedLoads = true;

@@ -426,6 +426,9 @@ public:
     /// Prints a note to stderr with appropriate terminal colors.
     void printNote(const std::string& message);
 
+    /// Get processed command paths
+    const flat_hash_set<std::filesystem::path> &getProcessedCommandFiles() const { return processedCommandFiles; }
+
 private:
     bool parseUnitListing(std::string_view text);
     void addLibraryFiles(std::string_view pattern);
@@ -435,6 +438,7 @@ private:
 
     bool anyFailedLoads = false;
     flat_hash_set<std::filesystem::path> activeCommandFiles;
+    flat_hash_set<std::filesystem::path> processedCommandFiles;
     std::vector<std::tuple<std::string_view, std::string_view, std::string_view>>
         translateOffFormats;
     std::unique_ptr<JsonWriter> jsonWriter;
