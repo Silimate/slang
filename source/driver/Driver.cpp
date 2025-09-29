@@ -679,6 +679,7 @@ bool Driver::processOptions() {
         diagEngine.setSeverity(diag::SplitDistWeightOp, DiagnosticSeverity::Error);
         diagEngine.setSeverity(diag::DPIPureTask, DiagnosticSeverity::Error);
         diagEngine.setSeverity(diag::SpecifyPathConditionExpr, DiagnosticSeverity::Error);
+        diagEngine.setSeverity(diag::SolveBeforeDisallowed, DiagnosticSeverity::Error);
     }
 
     Diagnostics optionDiags = diagEngine.setWarningOptions(options.warningOptions);
@@ -1145,8 +1146,7 @@ std::unique_ptr<AnalysisManager> Driver::runAnalysis(ast::Compilation& compilati
 
     AnalysisOptions ao;
     ao.numThreads = options.numThreads.value_or(0);
-    if (!options.lintMode())
-        ao.flags |= AnalysisFlags::CheckUnused;
+    ao.flags |= AnalysisFlags::CheckUnused;
     if (options.maxCaseAnalysisSteps)
         ao.maxCaseAnalysisSteps = *options.maxCaseAnalysisSteps;
     if (options.maxLoopAnalysisSteps)
@@ -1158,10 +1158,17 @@ std::unique_ptr<AnalysisManager> Driver::runAnalysis(ast::Compilation& compilati
     }
 
     auto analysisManager = std::make_unique<AnalysisManager>(ao);
-    analysisManager->analyze(compilation);
 
-    for (auto& diag : analysisManager->getDiagnostics(compilation.getSourceManager()))
-        diagEngine.issue(diag);
+    // We can't / shouldn't run analysis in lint-only mode.
+    // We'll just return an empty analysis manager in that case.
+    if (!options.lintMode()) {
+        analysisManager->analyze(compilation);
+
+        for (auto& diag : analysisManager->getDiagnostics(compilation.getSourceManager()))
+            diagEngine.issue(diag);
+    }
+
+    compilation.unfreeze();
 
     return analysisManager;
 }
