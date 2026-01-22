@@ -9,6 +9,7 @@
 
 #include <array>
 #include <cstring>
+#include <filesystem>
 #include <memory>
 #include <vector>
 
@@ -187,6 +188,15 @@ struct hash<std::shared_ptr<T>> {
     using is_avalanching = void;
     uint64_t operator()(const std::shared_ptr<T>& ptr) const noexcept {
         return detail::hashing::hash(reinterpret_cast<uintptr_t>(ptr.get()));
+    }
+};
+
+template<>
+struct hash<std::filesystem::path> {
+    using is_avalanching = void;
+    uint64_t operator()(const std::filesystem::path& p) const noexcept {
+        auto str = p.native();
+        return detail::hashing::hash(str.data(), sizeof(typename std::filesystem::path::value_type) * str.size());
     }
 };
 
